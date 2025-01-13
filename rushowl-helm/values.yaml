@@ -51,6 +51,8 @@ deployment:
               value: rushowl-wordpress
             - name: REDIS_TLS_DISABLED
               value: "true"
+            - name: DEBUG_DISABLE_AUTH
+              value: "false"
 
 configMap:
   data:
