@@ -45,7 +45,7 @@ deployment:
             - name: AWS_BUCKET_NAME
               value: rushowl-wordpress
             - name: REDIS_TLS_DISABLED
-              value: true
+              value: "true"
 
 configMap:
   data:
