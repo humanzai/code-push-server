@@ -108,6 +108,11 @@ export class RedisManager {
           rejectUnauthorized: true,
         },
       };
+      if (!process.env.REDIS_TLS_DISABLED) {
+        redisConfig["tls"] = {
+          rejectUnauthorized: true,
+        };
+      }
       this._opsClient = redis.createClient(redisConfig);
       this._metricsClient = redis.createClient(redisConfig);
       this._opsClient.on("error", (err: Error) => {
