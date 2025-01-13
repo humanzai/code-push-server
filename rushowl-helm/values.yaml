@@ -7,7 +7,7 @@ serviceName: code-push-server
 configMapName: code-push-server-config-map
 
 deployment:
-  replicas: 3
+  replicas: 1
   spec:
     template:
       spec:
