@@ -34,11 +34,9 @@ jobs:
       - node/install:
           node-version: v18.18.0
       - run:
-          name: Change directory to api
-          command: cd api
-      - run:
           name: Build
           command: |
+            cd api
             npm install
             npm run build
       - aws-ecr/build_and_push_image:
