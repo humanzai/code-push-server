@@ -162,6 +162,6 @@ workflows:
               ignore: /.*/
             branches:
               only:
-                - develop
+                - main
           requires:
             - build-and-push-image-test
