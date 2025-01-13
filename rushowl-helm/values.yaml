@@ -27,6 +27,11 @@ deployment:
                 secretKeyRef:
                   name: aws-redis-read-write
                   key: port
+            - name: REDIS_DB
+              valueFrom:
+                secretKeyRef:
+                  name: aws-redis-read-write
+                  key: rushtrail_db
             - name: AWS_REGION
               valueFrom:
                 secretKeyRef:
