@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.deploymentName }}
+  labels:
+    app: {{ .Values.deploymentName }}
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.deploymentName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.deploymentName }}
+    spec:
+      containers:
+        - name: {{ .Values.deploymentName }}
+          image: "{{ .Values.image.uri }}:{{ .Values.image.tag }}"
+          env: {{ (index .Values.deployment.spec.template.spec.containers 0).env | toYaml | nindent 12 }}
+          volumeMounts: {{ (index .Values.deployment.spec.template.spec.containers 0).volumeMounts | toYaml | nindent 12 }}
+          ports:
+            - containerPort: 50050
+      volumes: {{ toYaml .Values.deployment.spec.template.spec.volumes | nindent 8 }}

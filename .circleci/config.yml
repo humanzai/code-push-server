@@ -13,10 +13,10 @@ jobs:
       image: ubuntu-2204:current
     steps:
       - checkout
-      # - persist_to_workspace:
-      #     root: .
-      #     paths:
-      #       - rushowl-helm
+      - persist_to_workspace:
+          root: .
+          paths:
+            - rushowl-helm
       - run:
           name: Generate SSH Key
           command: |
@@ -147,55 +147,21 @@ workflows:
               only: /^v\d+\.\d+\.\d+$/
             branches:
               ignore: /.*/
-      # - kube-deploy:
-      #     context:
-      #       - kubeconfig
-      #       - production-aws-ecr-read-write
-      #       - slack
-      #     name: kube-deploy-non-prod
-      #     namespace: "sg-test-rushtrail"
-      #     valuePath: "rushowl-helm/values-test.yaml"
-      #     tag: "${CIRCLE_BRANCH}-${CIRCLE_SHA1}"
-      #     kube_context: "rushtrail-non-prod-common"
-      #     filters:
-      #       tags:
-      #         ignore: /.*/
-      #       branches:
-      #         only:
-      #           - develop
-      #     requires:
-      #       - build-and-push-image-test
-      # - kube-deploy:
-      #     context:
-      #       - kubeconfig
-      #       - production-aws-ecr-read-write
-      #       - slack
-      #     name: kube-deploy-prod-sg
-      #     namespace: "default"
-      #     valuePath: "rushowl-helm/values-prod-sg.yaml"
-      #     tag: "$CIRCLE_TAG"
-      #     kube_context: "rushtrail-prod-sg"
-      #     filters:
-      #       tags:
-      #         only: /^v\d+\.\d+\.\d+$/
-      #       branches:
-      #         ignore: /.*/
-      #     requires:
-      #       - build-and-push-image-production
-      # - kube-deploy:
-      #     context:
-      #       - kubeconfig
-      #       - production-aws-ecr-read-write
-      #       - slack
-      #     name: kube-deploy-prod-in
-      #     namespace: "default"
-      #     valuePath: "rushowl-helm/values-prod-in.yaml"
-      #     tag: "$CIRCLE_TAG"
-      #     kube_context: "rushtrail-prod-in"
-      #     filters:
-      #       tags:
-      #         only: /^v\d+\.\d+\.\d+$/
-      #       branches:
-      #         ignore: /.*/
-      #     requires:
-      #       - build-and-push-image-production
+      - kube-deploy:
+          context:
+            - kubeconfig
+            - production-aws-ecr-read-write
+            - slack
+          name: kube-deploy-non-prod
+          namespace: "sg-test-rushtrail"
+          valuePath: "rushowl-helm/values.yaml"
+          tag: "${CIRCLE_BRANCH}-${CIRCLE_SHA1}"
+          kube_context: "rushtrail-non-prod-common"
+          filters:
+            tags:
+              ignore: /.*/
+            branches:
+              only:
+                - develop
+          requires:
+            - build-and-push-image-test

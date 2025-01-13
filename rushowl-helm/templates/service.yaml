@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Values.serviceName }}
+spec:
+  selector:
+    app: {{ .Values.deploymentName }}
+  ports:
+    - protocol: TCP
+      port: 50050
+      targetPort: 3000
+  type: NodePort

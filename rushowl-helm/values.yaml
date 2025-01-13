@@ -1,0 +1,49 @@
+# Default values for rushowl-helm.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+deploymentName: code-push-server
+serviceName: code-push-server
+configMapName: code-push-server-config-map
+
+deployment:
+  replicas: 3
+  spec:
+    template:
+      spec:
+        containers:
+          - env:
+            - name: APP_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: aws-redis-read-write
+                  key: host
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: aws-redis-read-write
+                  key: port
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: s3-rushowl-data
+                  key: s3_region
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3-rushowl-data
+                  key: s3_access_key
+            - name: AWS_SECRET_ACCESS
+              valueFrom:
+                secretKeyRef:
+                  name: s3-rushowl-data
+                  key: s3_secret_key
+            - name: AWS_BUCKET_NAME
+              value: rushowl-wordpress
+
+configMap:
+  data:
