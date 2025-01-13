@@ -13,10 +13,10 @@ jobs:
       image: ubuntu-2204:current
     steps:
       - checkout
-      - persist_to_workspace:
-          root: .
-          paths:
-            - rushowl-helm
+      # - persist_to_workspace:
+      #     root: .
+      #     paths:
+      #       - rushowl-helm
       - run:
           name: Generate SSH Key
           command: |
