@@ -54,7 +54,9 @@ deployment:
             - name: DEBUG_DISABLE_AUTH
               value: "false"
             - name: CODE_PUSH_SERVER_URL
-              value: http://localhost:3000
+              value: https://sg.test.rushtrail.app/code-push
+            - name: BASE_URL
+              value: /code-push
             - name: GITHUB_CLIENT_ID
               valueFrom:
                 secretKeyRef:
