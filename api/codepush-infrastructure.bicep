@@ -63,7 +63,7 @@ resource webApp 'Microsoft.Web/sites@2022-03-01' = {
         { name: 'MICROSOFT_CLIENT_ID', value: microsoft_client_id }
         { name: 'MICROSOFT_CLIENT_SECRET', value: microsoft_client_secret }
         { name: 'WEBSITE_NODE_DEFAULT_VERSION', value: '18-lts' }
-        { name: 'SERVER_URL', value: serverUrl }
+        { name: 'CODE_PUSH_SERVER_URL', value: serverUrl }
         { name: 'CORS_ORIGIN', value: serverUrl }
         { name: 'LOGGING', value: logging ? 'true' : 'false' }
       ]

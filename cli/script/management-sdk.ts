@@ -58,7 +58,7 @@ class AccountManager {
     OWNER: "Owner",
     COLLABORATOR: "Collaborator",
   };
-  public static SERVER_URL = "https://sg.test.rushtrail.app/code-push";
+  public static SERVER_URL = process.env["CODE_PUSH_SERVER_URL"];
 
   private static API_VERSION: number = 2;
 

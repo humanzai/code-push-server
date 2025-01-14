@@ -19,7 +19,7 @@ Currently, the following environment variables are available. For convenience, w
 
 ### Authentication
 
-- `SERVER_URL`: The URL of your server, for local deployment it will be either http://localhost:3000 or https://localhost:8443. For Azure it will be your Azure App URL
+- `CODE_PUSH_SERVER_URL`: The URL of your server, for local deployment it will be either http://localhost:3000 or https://localhost:8443. For Azure it will be your Azure App URL
 
 #### GitHub OAuth
 

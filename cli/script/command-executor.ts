@@ -579,7 +579,7 @@ function initiateExternalAuthenticationAsync(action: string, serverUrl?: string)
 
   log(message);
   const hostname: string = os.hostname();
-  const url: string = `${serverUrl || AccountManager.SERVER_URL}/auth/${action}?hostname=${hostname}`;
+  const url: string = `${process.env["CODE_PUSH_SERVER_URL"]}/auth/${action}?hostname=${hostname}`;
   opener(url);
 }
 

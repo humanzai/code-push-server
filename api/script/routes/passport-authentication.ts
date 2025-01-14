@@ -48,7 +48,7 @@ export class PassportAuthentication {
   private _storageInstance: storage.Storage;
 
   constructor(config: AuthenticationConfig) {
-    this._serverUrl = process.env["SERVER_URL"];
+    this._serverUrl = process.env["CODE_PUSH_SERVER_URL"];
 
     // This session is neither encrypted nor signed beyond what is provided by SSL
     // By default, the 'secure' flag will be set if the node process is using SSL
