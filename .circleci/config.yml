@@ -126,6 +126,7 @@ workflows:
           context:
             - production-github-git-access
             - production-aws-ecr-read-write
+            - code-push-standalone
             - slack
           name: build-and-push-image-test
           tag: "${CIRCLE_BRANCH}-${CIRCLE_SHA1}"
@@ -151,6 +152,7 @@ workflows:
           context:
             - kubeconfig
             - production-aws-ecr-read-write
+            - code-push-standalone
             - slack
           name: kube-deploy-non-prod
           namespace: "sg-test-rushtrail"
