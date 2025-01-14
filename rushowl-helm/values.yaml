@@ -17,6 +17,8 @@ deployment:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: LOGGING
+              value: "true"
             - name: REDIS_HOST
               valueFrom:
                 secretKeyRef:
