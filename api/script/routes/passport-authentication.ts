@@ -329,6 +329,12 @@ export class PassportAuthentication {
           return;
         }
 
+        const allowedEmailDomains: string[] = process.env["ALLOWED_EMAIL_DOMAINS"] ? process.env["ALLOWED_EMAIL_DOMAINS"].split(",") : [];
+        if (allowedEmailDomains.length > 0 && !allowedEmailDomains.some((domain: string) => emailAddress.endsWith(domain))) {
+          restErrorUtils.sendForbiddenPage(res, "You are not registered with the service using this provider account.");
+          return;
+        }
+
         const issueAccessKey = (accountId: string): Promise<void> => {
           const now: number = new Date().getTime();
           const friendlyName: string = `Login-${now}`;

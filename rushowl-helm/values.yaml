@@ -57,6 +57,8 @@ deployment:
               value: https://sg.test.rushtrail.app/code-push
             - name: BASE_URL
               value: /code-push
+            - name: ALLOWED_EMAIL_DOMAINS
+              value: rushowl.sg,rushowl.app
             - name: GITHUB_CLIENT_ID
               valueFrom:
                 secretKeyRef:
