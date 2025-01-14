@@ -537,16 +537,15 @@ export class RedisS3Storage implements storage.Storage {
   }
 
   public addBlob(blobId: string, stream: stream.Readable, streamLength: number): Promise<string> {
-    const params = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: blobId,
-      Body: stream,
-    };
-
     return q
       .Promise<string>((resolve, reject) => {
         this.s3Client
-          .send(new PutObjectCommand(params))
+          .send(new PutObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: blobId,
+            Body: stream,
+            ContentLength: streamLength,
+          }))
           .then(() => {
             resolve(blobId);
           })
