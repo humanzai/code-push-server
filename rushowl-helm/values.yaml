@@ -56,7 +56,7 @@ deployment:
             - name: DEBUG_DISABLE_AUTH
               value: "false"
             - name: CODE_PUSH_SERVER_URL
-              value: https://sg.test.rushtrail.app/code-push
+              value: https://sg.rushtrail.app/code-push
             - name: BASE_URL
               value: /code-push
             - name: ALLOWED_EMAIL_DOMAINS
