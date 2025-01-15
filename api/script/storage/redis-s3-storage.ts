@@ -537,12 +537,13 @@ export class RedisS3Storage implements storage.Storage {
   }
 
   public addBlob(blobId: string, stream: stream.Readable, streamLength: number): Promise<string> {
+    const key: string = `codepush/${blobId}`
     return q
       .Promise<string>((resolve, reject) => {
         this.s3Client
           .send(new PutObjectCommand({
             Bucket: process.env.AWS_BUCKET_NAME,
-            Key: blobId,
+            Key: key,
             Body: stream,
             ContentLength: streamLength,
           }))
@@ -552,7 +553,7 @@ export class RedisS3Storage implements storage.Storage {
           .catch(reject);
       })
       .then(() => {
-        this.blobs[blobId] = `${process.env.CDN_HOST}/codepush/${blobId}`;
+        this.blobs[blobId] = `${process.env.CDN_HOST}/${key}`;
 
         this.saveStateAsync();
 
