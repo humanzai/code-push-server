@@ -86,7 +86,9 @@ export class RedisS3Storage implements storage.Storage {
       this.blobs = obj.blobs || {};
       this.accountToAppsMap = obj.accountToAppsMap || {};
       this.appToAccountMap = obj.appToAccountMap || {};
-      this.emailToAccountMap = obj.emailToAccountMap || {};
+      Object.keys(this.accounts).forEach((v) => {
+        this.emailToAccountMap[this.accounts[v].email] = v
+      })
       this.appToDeploymentsMap = obj.appToDeploymentsMap || {};
       this.deploymentToAppMap = obj.deploymentToAppMap || {};
       this.deploymentKeyToDeploymentMap = obj.deploymentKeyToDeploymentMap || {};
@@ -331,8 +333,6 @@ export class RedisS3Storage implements storage.Storage {
       }
 
       const targetCollaboratorAccountId: string = this.emailToAccountMap[email.toLowerCase()];
-      console.log(this.emailToAccountMap)
-      console.log(email.toLowerCase())
       if (!targetCollaboratorAccountId) {
         return RedisS3Storage.getRejectedPromise(storage.ErrorCode.NotFound, RedisS3Storage.CollaboratorNotFound);
       }
