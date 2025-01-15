@@ -56,9 +56,9 @@ deployment:
             - name: DEBUG_DISABLE_AUTH
               value: "false"
             - name: CODE_PUSH_SERVER_URL
-              value: https://codepush.rushtrail.app/c
+              value: https://global.rushtrail.app/code-push
             - name: BASE_URL
-              value: /c
+              value: /code-push
             - name: ALLOWED_EMAIL_DOMAINS
               value: rushowl.sg,rushowl.app
             - name: GITHUB_CLIENT_ID
