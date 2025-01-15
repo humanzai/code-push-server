@@ -331,6 +331,8 @@ export class RedisS3Storage implements storage.Storage {
       }
 
       const targetCollaboratorAccountId: string = this.emailToAccountMap[email.toLowerCase()];
+      console.log(this.emailToAccountMap)
+      console.log(email.toLowerCase())
       if (!targetCollaboratorAccountId) {
         return RedisS3Storage.getRejectedPromise(storage.ErrorCode.NotFound, RedisS3Storage.CollaboratorNotFound);
       }
