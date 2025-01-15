@@ -552,7 +552,7 @@ export class RedisS3Storage implements storage.Storage {
           .catch(reject);
       })
       .then(() => {
-        this.blobs[blobId] = `https://${process.env.AWS_BUCKET_NAME}.s3.amazonaws.com/${blobId}`;
+        this.blobs[blobId] = `${process.env.CDN_HOST}/codepush/${blobId}`;
 
         this.saveStateAsync();
 
