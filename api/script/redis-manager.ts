@@ -102,8 +102,11 @@ export class RedisManager {
       const redisConfig: { host: string; port: string; auth_pass?: string; [key: string]: any } = {
         host: process.env.REDIS_HOST,
         port: process.env.REDIS_PORT,
+        connectTimeout: 10000,
+        commandTimeout: 10000,
+        keepAlive: true,
       };
-      if (process.env.USE_REDIS_AUTH){
+      if (process.env.USE_REDIS_AUTH) {
         redisConfig.auth_pass = process.env.REDIS_KEY;
       }
       if (!process.env.REDIS_TLS_DISABLED) {
