@@ -49,6 +49,10 @@ To enable the Redis caching layer, set:
 
 - `REDIS_HOST`: The IP address where the Redis server is hosted (e.g.: codepush.redis.cache.windows.net)
 - `REDIS_PORT`: The port which Redis is listening on (usually 6379 for HTTP and 6380 for HTTPS). Note that node_redis does not support HTTPS natively.
+
+If your Redis instance requires authentication, set the following:
+
+- `USE_REDIS_AUTH`: Set to 'true' to enable authentication for Redis connections.
 - `REDIS_KEY` (If authentication is enabled for Redis): The key used to authenticate requests to the Redis cache.
 
 ### Other

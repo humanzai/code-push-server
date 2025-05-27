@@ -99,11 +99,13 @@ export class RedisManager {
 
   constructor() {
     if (process.env.REDIS_HOST && process.env.REDIS_PORT) {
-      const redisConfig = {
+      const redisConfig: { host: string; port: string; auth_pass?: string; [key: string]: any } = {
         host: process.env.REDIS_HOST,
         port: process.env.REDIS_PORT,
-        auth_pass: process.env.REDIS_KEY,
       };
+      if (process.env.USE_REDIS_AUTH){
+        redisConfig.auth_pass = process.env.REDIS_KEY;
+      }
       if (!process.env.REDIS_TLS_DISABLED) {
         redisConfig["tls"] = {
           rejectUnauthorized: true,
@@ -114,7 +116,6 @@ export class RedisManager {
       this._opsClient.on("error", (err: Error) => {
         console.error(err);
       });
-
       this._metricsClient.on("error", (err: Error) => {
         console.error(err);
       });
