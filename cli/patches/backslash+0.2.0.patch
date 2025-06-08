@@ -1,0 +1,12 @@
+diff --git a/node_modules/backslash/index.js b/node_modules/backslash/index.js
+index c6e9376..cbe65cd 100644
+--- a/node_modules/backslash/index.js
++++ b/node_modules/backslash/index.js
+@@ -1,6 +1,6 @@
+ 'use strict';
+ 
+-var punycode = require('punycode');
++var punycode = require('punycode/');
+ 
+ function BackslashError(offset, err) {
+   this.__proto__ = new Error(err);
