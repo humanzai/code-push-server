@@ -85,6 +85,7 @@ describe("react-native-utils", () => {
 
   it("uses the hermes-compiler package before falling back to hermesvm", async () => {
     writeReactNativeProject(projectPath, true);
+    process.env.CODE_PUSH_NODE_ARGS = "  --max-old-space-size=8192  ";
 
     const hermesCompilerPath = path.join(
       projectPath,

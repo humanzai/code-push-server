@@ -19,18 +19,14 @@ export async function runHermesEmitBinaryCommand(
     gradleFile: string
 ): Promise<void> {
   const hermesArgs: string[] = [];
-  const envNodeArgs: string = process.env.CODE_PUSH_NODE_ARGS;
-
-  if (typeof envNodeArgs !== "undefined") {
-    Array.prototype.push.apply(hermesArgs, envNodeArgs.trim().split(/\s+/));
-  }
+  const hermesExtraFlags = extraHermesFlags || [];
 
   Array.prototype.push.apply(hermesArgs, [
     "-emit-binary",
     "-out",
     path.join(outputFolder, bundleName + ".hbc"),
     path.join(outputFolder, bundleName),
-    ...extraHermesFlags,
+    ...hermesExtraFlags,
   ]);
 
   if (sourcemapOutput) {
@@ -201,12 +197,18 @@ export function getAndroidHermesEnabled(gradleFile: string): Promise<boolean> {
 }
 
 export function getiOSHermesEnabled(podFile: string): boolean {
-  let podPath = path.join("ios", "Podfile");
-  if (podFile) {
-    podPath = podFile;
+  let podPath = podFile;
+  const defaultPodPaths = [path.join("ios", "Podfile"), path.join("iOS", "Podfile")];
+  if (!podPath) {
+    podPath = defaultPodPaths.find((podFilePath: string) => !fileDoesNotExistOrIsDirectory(podFilePath));
   }
+
   if (fileDoesNotExistOrIsDirectory(podPath)) {
-    throw new Error(`Unable to find Podfile file "${podPath}".`);
+    if (podFile) {
+      throw new Error(`Unable to find Podfile file "${podFile}".`);
+    }
+
+    throw new Error(`Unable to find Podfile file "${defaultPodPaths[0]}" or "${defaultPodPaths[1]}".`);
   }
 
   try {

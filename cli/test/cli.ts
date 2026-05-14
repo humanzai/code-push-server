@@ -2,8 +2,11 @@
 // Licensed under the MIT License.
 
 import * as assert from "assert";
+import * as childProcess from "child_process";
+import * as fs from "fs";
 import * as sinon from "sinon";
 import Q = require("q");
+import * as moment from "moment";
 import * as path from "path";
 import * as codePush from "../script/types";
 import * as cli from "../script/types/cli";
@@ -23,10 +26,48 @@ function ensureInTestAppDirectory(): void {
   if (!~__dirname.indexOf("/resources/TestApp")) {
     process.chdir(__dirname + "/resources/TestApp");
   }
+  ensureModernReactNativeDependencies();
 }
 
 function isDefined(object: any): boolean {
   return object !== undefined && object !== null;
+}
+
+function getHermesOSBin(): string {
+  switch (process.platform) {
+    case "win32":
+      return "win64-bin";
+    case "darwin":
+      return "osx-bin";
+    case "freebsd":
+    case "linux":
+    case "sunos":
+    default:
+      return "linux64-bin";
+  }
+}
+
+function getHermesOSExe(): string {
+  return process.platform === "win32" ? "hermesc.exe" : "hermesc";
+}
+
+function writeFixtureFile(filePath: string, contents: string = ""): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, contents);
+}
+
+function ensureModernReactNativeDependencies(): void {
+  writeFixtureFile(
+    path.join("node_modules", "react-native", "package.json"),
+    JSON.stringify({
+      name: "react-native",
+      version: "0.84.1",
+    })
+  );
+  writeFixtureFile(path.join("node_modules", "react-native", "cli.js"));
+  writeFixtureFile(path.join("node_modules", "react-native", "scripts", "compose-source-maps.js"));
+  writeFixtureFile(path.join("node_modules", "hermes-compiler", "package.json"), JSON.stringify({ name: "hermes-compiler" }));
+  writeFixtureFile(path.join("node_modules", "hermes-compiler", "hermesc", getHermesOSBin(), getHermesOSExe()));
 }
 
 const NOW = 1471460856191;
@@ -68,7 +109,7 @@ export class SdkStub {
     });
   }
 
-  public patchAccessKey(newName?: string, newTtl?: number): Q.Promise<codePush.AccessKey> {
+  public patchAccessKey(_oldName: string, newName?: string, newTtl?: number): Q.Promise<codePush.AccessKey> {
     return Q(<codePush.AccessKey>{
       createdTime: new Date().getTime(),
       name: newName,
@@ -266,23 +307,49 @@ describe("CLI", () => {
   var log: sinon.SinonStub;
   var sandbox: sinon.SinonSandbox;
   var spawn: sinon.SinonStub;
+  var hermesSpawn: sinon.SinonStub;
   var wasConfirmed = true;
+  var originalCodePushNodeArgs: string | undefined;
   const INVALID_RELEASE_FILE_ERROR_MESSAGE: string =
     "It is unnecessary to package releases in a .zip or binary file. Please specify the direct path to the update content's directory (e.g. /platforms/ios/www) or file (e.g. main.jsbundle).";
 
   beforeEach((): void => {
     wasConfirmed = true;
+    originalCodePushNodeArgs = process.env.CODE_PUSH_NODE_ARGS;
 
     sandbox = sinon.createSandbox();
 
-    sandbox.stub(cmdexec, "confirm").returns(
-      Q.Promise((resolve) => {
+    sandbox.stub(cmdexec, "confirm").callsFake(() =>
+      Q.Promise((resolve): void => {
         resolve(wasConfirmed);
       })
     );
 
     sandbox.stub(cmdexec, "createEmptyTempReleaseFolder").callsFake(() => Q.Promise<void>((resolve) => resolve()));
     log = sandbox.stub(cmdexec, "log").callsFake(() => {});
+    (cmdexec as any).sdk = new SdkStub();
+    hermesSpawn = sandbox.stub(childProcess, "spawn").callsFake((): any => {
+      return {
+        stdout: { on: () => {} },
+        stderr: { on: () => {} },
+        on: (event: string, callback: Function) => {
+          if (event === "close") {
+            callback(0, null);
+          }
+        },
+      };
+    });
+    sandbox.stub(fs, "copyFile").callsFake((...args: any[]): void => {
+      const source = args[0];
+      const callback = args[args.length - 1];
+      fs.mkdirSync(path.dirname(source), { recursive: true });
+      fs.writeFileSync(`${source}.map`, "");
+      callback(null);
+    });
+    sandbox.stub(fs, "unlink").callsFake((...args: any[]): void => {
+      const callback = args[args.length - 1];
+      callback(null);
+    });
     spawn = sandbox.stub(cmdexec, "spawn").callsFake(() => {
       return {
         stdout: { on: () => {} },
@@ -295,6 +362,12 @@ describe("CLI", () => {
   });
 
   afterEach((): void => {
+    if (originalCodePushNodeArgs === undefined) {
+      delete process.env.CODE_PUSH_NODE_ARGS;
+    } else {
+      process.env.CODE_PUSH_NODE_ARGS = originalCodePushNodeArgs;
+    }
+    (cmdexec as any).sdk = null;
     sandbox.restore();
   });
 
@@ -376,7 +449,7 @@ describe("CLI", () => {
       assert.equal(log.args[0].length, 1);
 
       var actual: string = log.args[0][0];
-      var expected = `Successfully changed the expiration date of the "Test name" access key to Wednesday, August 17, 2016 12:07 PM.`;
+      var expected = `Successfully changed the expiration date of the "Test name" access key to ${moment(NOW + ttl).format("LLLL")}.`;
 
       assert.equal(actual, expected);
       done();
@@ -397,7 +470,7 @@ describe("CLI", () => {
       assert.equal(log.args[0].length, 1);
 
       var actual: string = log.args[0][0];
-      var expected = `Successfully renamed the access key "Test name" to "Updated name" and changed its expiration date to Wednesday, August 17, 2016 12:07 PM.`;
+      var expected = `Successfully renamed the access key "Test name" to "Updated name" and changed its expiration date to ${moment(NOW + ttl).format("LLLL")}.`;
 
       assert.equal(actual, expected);
       done();
@@ -838,7 +911,7 @@ describe("CLI", () => {
       assert.equal(log.args[0].length, 1);
 
       var actual: string = log.args[0][0];
-      var expected: codePush.Package[] = [
+      var expected: Array<codePush.Package & cmdexec.PackageWithMetrics> = [
         {
           description: null,
           appVersion: "1.0.0",
@@ -848,6 +921,13 @@ describe("CLI", () => {
           uploadTime: 1447113596270,
           size: 1,
           label: "v1",
+          metrics: {
+            active: 789,
+            downloaded: 456,
+            failed: 654,
+            installed: 987,
+            totalActive: 1035,
+          },
         },
         {
           description: "New update - this update does a whole bunch of things, including testing linewrapping",
@@ -858,6 +938,13 @@ describe("CLI", () => {
           uploadTime: 1447118476669,
           size: 2,
           label: "v2",
+          metrics: {
+            active: 123,
+            downloaded: 321,
+            failed: 789,
+            installed: 456,
+            totalActive: 1035,
+          },
         },
       ];
 
@@ -1255,9 +1342,10 @@ describe("CLI", () => {
         var spawnCommand: string = spawn.args[0][0];
         var spawnCommandArgs: string = spawn.args[0][1].join(" ");
         assert.equal(spawnCommand, "node");
+        sinon.assert.calledOnce(hermesSpawn);
         assert.equal(
           spawnCommandArgs,
-          `${path.join("node_modules", "react-native", "local-cli", "cli.js")} bundle --assets-dest ${path.join(
+          `${path.join("node_modules", "react-native", "cli.js")} bundle --assets-dest ${path.join(
             os.tmpdir(),
             "CodePush"
           )} --bundle-output ${path.join(os.tmpdir(), "CodePush", bundleName)} --dev false --entry-file index.ios.js --platform ios`
@@ -1301,7 +1389,6 @@ describe("CLI", () => {
           `${path.join(
             "node_modules",
             "react-native",
-            "local-cli",
             "cli.js"
           )} bundle --assets-dest ${packagePath} --bundle-output ${path.join(
             packagePath,
@@ -1347,7 +1434,6 @@ describe("CLI", () => {
           `${path.join(
             "node_modules",
             "react-native",
-            "local-cli",
             "cli.js"
           )} bundle --assets-dest ${packagePath} --bundle-output ${path.join(
             packagePath,
@@ -1393,7 +1479,6 @@ describe("CLI", () => {
           `${path.join(
             "node_modules",
             "react-native",
-            "local-cli",
             "cli.js"
           )} bundle --assets-dest ${packagePath} --bundle-output ${path.join(
             packagePath,
@@ -1439,7 +1524,7 @@ describe("CLI", () => {
         assert.equal(spawnCommand, "node");
         assert.equal(
           spawnCommandArgs,
-          `${path.join("node_modules", "react-native", "local-cli", "cli.js")} bundle --assets-dest ${path.join(
+          `${path.join("node_modules", "react-native", "cli.js")} bundle --assets-dest ${path.join(
             os.tmpdir(),
             "CodePush"
           )} --bundle-output ${path.join(
@@ -1486,7 +1571,7 @@ describe("CLI", () => {
         assert.equal(spawnCommand, "node");
         assert.equal(
           spawnCommandArgs,
-          `${path.join("node_modules", "react-native", "local-cli", "cli.js")} bundle --assets-dest ${path.join(
+          `${path.join("node_modules", "react-native", "cli.js")} bundle --assets-dest ${path.join(
             os.tmpdir(),
             "CodePush"
           )} --bundle-output ${path.join(
@@ -1532,7 +1617,7 @@ describe("CLI", () => {
         assert.equal(spawnCommand, "node");
         assert.equal(
           spawnCommandArgs,
-          `${path.join("node_modules", "react-native", "local-cli", "cli.js")} bundle --assets-dest ${path.join(
+          `${path.join("node_modules", "react-native", "cli.js")} bundle --assets-dest ${path.join(
             os.tmpdir(),
             "CodePush"
           )} --bundle-output ${path.join(
@@ -1581,7 +1666,7 @@ describe("CLI", () => {
         assert.equal(spawnCommand, "node");
         assert.equal(
           spawnCommandArgs,
-          `--foo=bar --baz ${path.join("node_modules", "react-native", "local-cli", "cli.js")} bundle --assets-dest ${path.join(
+          `--foo=bar --baz ${path.join("node_modules", "react-native", "cli.js")} bundle --assets-dest ${path.join(
             os.tmpdir(),
             "CodePush"
           )} --bundle-output ${path.join(os.tmpdir(), "CodePush", bundleName)} --dev false --entry-file index.ios.js --platform ios`

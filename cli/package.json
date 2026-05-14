@@ -9,7 +9,9 @@
     "prettier": "prettier --write \"./**/*.ts\"",
     "lint": "npx eslint ./script/**/*.ts",
     "lint:fix": "npx eslint ./script/**/*.ts --fix",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "test:build": "npm run build && shx rm -rf ./bin/test/resources && shx cp -r ./test/resources ./bin/test",
+    "test": "npm run test:build && mocha --require ./test/mocha-bootstrap.js \"bin/test/*.js\""
   },
   "bin": {
     "code-push-standalone": "./bin/script/cli.js"
@@ -61,11 +63,14 @@
     "eslint": "^8.45.0",
     "express": "^4.19.2",
     "mkdirp": "^3.0.1",
+    "mocha": "^11.1.0",
     "prettier": "^2.8.8",
+    "shx": "^0.3.4",
     "sinon": "15.1.2",
     "superagent-mock": "^4.0.0",
     "typescript": "^5.1.3",
-    "which": "^3.0.1"
+    "which": "^3.0.1",
+    "yauzl": "2.6.0"
   },
   "overrides": {
     "form-data": "4.0.1"

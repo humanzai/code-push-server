@@ -876,10 +876,12 @@ function getReactNativeProjectAppVersion(command: cli.IReleaseReactCommand, proj
         command.plistFilePrefix += "-";
       }
 
-      const iOSDirectory: string = "ios";
       const plistFileName = `${command.plistFilePrefix || ""}Info.plist`;
 
-      const knownLocations = [path.join(iOSDirectory, projectName, plistFileName), path.join(iOSDirectory, plistFileName)];
+      const knownLocations = ["ios", "iOS"].reduce((locations: string[], iOSDirectory: string) => {
+        locations.push(path.join(iOSDirectory, projectName, plistFileName), path.join(iOSDirectory, plistFileName));
+        return locations;
+      }, []);
 
       resolvedPlistFile = (<any>knownLocations).find(fileExists);
 
@@ -1169,7 +1171,7 @@ function promote(command: cli.IPromoteCommand): Promise<void> {
     .then((): void => {
       log(
         "Successfully promoted " +
-          (command.label !== null ? '"' + command.label + '" of ' : "") +
+          (isCommandOptionSpecified(command.label) ? '"' + command.label + '" of ' : "") +
           'the "' +
           command.sourceDeploymentName +
           '" deployment of the "' +
