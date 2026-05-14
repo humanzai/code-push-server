@@ -32,7 +32,12 @@ function writeFile(filePath: string, contents: string = ""): void {
   fs.writeFileSync(filePath, contents);
 }
 
-function writeReactNativeProject(projectPath: string, hermesEnabled: boolean, reactNativeVersion: string = "0.84.1"): void {
+function writeReactNativeProject(
+  projectPath: string,
+  gradleProperties: Record<string, string | boolean> = {},
+  reactNativeVersion: string = "0.84.1",
+  buildGradleContents?: string
+): void {
   writeFile(
     path.join(projectPath, "package.json"),
     JSON.stringify({
@@ -45,7 +50,8 @@ function writeReactNativeProject(projectPath: string, hermesEnabled: boolean, re
 
   writeFile(
     path.join(projectPath, "android", "app", "build.gradle"),
-    `
+    buildGradleContents ||
+      `
 apply plugin: "com.android.application"
 
 android {
@@ -56,7 +62,10 @@ android {
 `
   );
 
-  writeFile(path.join(projectPath, "android", "gradle.properties"), `hermesEnabled=${hermesEnabled}`);
+  const gradlePropertiesContents = Object.keys(gradleProperties)
+    .map((key) => `${key}=${gradleProperties[key]}`)
+    .join("\n");
+  writeFile(path.join(projectPath, "android", "gradle.properties"), gradlePropertiesContents);
 }
 
 function writeHermesCompiler(projectPath: string): string {
@@ -127,14 +136,47 @@ describe("react-native-utils", () => {
     fs.rmSync(projectPath, { recursive: true, force: true });
   });
 
-  it("detects Android Hermes from gradle.properties in modern React Native projects", async () => {
-    writeReactNativeProject(projectPath, true);
+  it("detects Android Hermes from gradle.properties in React Native projects", async () => {
+    writeReactNativeProject(projectPath, { hermesEnabled: true }, "0.83.0");
 
     assert.equal(await getAndroidHermesEnabled(null), true);
   });
 
+  it("treats React Native 0.84 Android projects as Hermes-enabled by default", async () => {
+    writeReactNativeProject(projectPath);
+
+    assert.equal(await getAndroidHermesEnabled(null), true);
+  });
+
+  it("honors React Native 0.84 Android Hermes V1 opt-out", async () => {
+    writeReactNativeProject(projectPath, { hermesV1Enabled: false });
+
+    assert.equal(await getAndroidHermesEnabled(null), false);
+  });
+
+  it("keeps legacy enableHermes=false ahead of React Native 0.84 defaults", async () => {
+    writeReactNativeProject(
+      projectPath,
+      {},
+      "0.84.1",
+      `
+project.ext.react = [
+    enableHermes: false
+]
+
+android {
+    defaultConfig {
+        versionName "1.0.0"
+    }
+}
+`
+    );
+
+    assert.equal(await getAndroidHermesEnabled(null), false);
+  });
+
   it("uses the hermes-compiler package before falling back to hermesvm", async () => {
-    writeReactNativeProject(projectPath, true);
+    writeReactNativeProject(projectPath);
     process.env.CODE_PUSH_NODE_ARGS = "  --max-old-space-size=8192  ";
 
     const hermesCompilerPath = writeHermesCompiler(projectPath);
@@ -157,7 +199,7 @@ describe("react-native-utils", () => {
   });
 
   it("keeps hermes-engine ahead of hermes-compiler for legacy React Native projects", async () => {
-    writeReactNativeProject(projectPath, true, "0.70.6");
+    writeReactNativeProject(projectPath, { hermesEnabled: true }, "0.70.6");
 
     const hermesEnginePath = writeHermesEngine(projectPath);
     writeHermesCompiler(projectPath);

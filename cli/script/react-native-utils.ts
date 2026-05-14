@@ -182,6 +182,11 @@ function getGradleProperty(gradlePropertiesPath: string, propertyName: string): 
   return null;
 }
 
+function getReactNativeMajorMinorVersion(): string {
+  const reactNativeVersion = coerce(getReactNativeVersion());
+  return reactNativeVersion && reactNativeVersion.version;
+}
+
 export function getAndroidHermesEnabled(gradleFile: string): Promise<boolean> {
   return parseBuildGradleFile(gradleFile).then((buildGradle: any) => {
     const legacyHermesFlag = Array.from(buildGradle["project.ext.react"] || []).find((line: string) =>
@@ -191,8 +196,17 @@ export function getAndroidHermesEnabled(gradleFile: string): Promise<boolean> {
       return /^enableHermes\s{0,}:\s{0,}true/.test(legacyHermesFlag as string);
     }
 
-    const hermesEnabledProperty = getGradleProperty(getAndroidGradlePropertiesPath(gradleFile), "hermesEnabled");
-    return !!hermesEnabledProperty && hermesEnabledProperty.toLowerCase() === "true";
+    const gradlePropertiesPath = getAndroidGradlePropertiesPath(gradleFile);
+    const hermesEnabledProperty = getGradleProperty(gradlePropertiesPath, "hermesEnabled");
+    if (hermesEnabledProperty !== null) {
+      return hermesEnabledProperty.toLowerCase() === "true";
+    }
+
+    const hermesV1EnabledProperty = getGradleProperty(gradlePropertiesPath, "hermesV1Enabled");
+    return (
+      compare(getReactNativeMajorMinorVersion(), "0.84.0") >= 0 &&
+      (!hermesV1EnabledProperty || hermesV1EnabledProperty.toLowerCase() !== "false")
+    );
   });
 }
 
