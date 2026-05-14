@@ -202,11 +202,7 @@ export function getAndroidHermesEnabled(gradleFile: string): Promise<boolean> {
       return hermesEnabledProperty.toLowerCase() === "true";
     }
 
-    const hermesV1EnabledProperty = getGradleProperty(gradlePropertiesPath, "hermesV1Enabled");
-    return (
-      compare(getReactNativeMajorMinorVersion(), "0.84.0") >= 0 &&
-      (!hermesV1EnabledProperty || hermesV1EnabledProperty.toLowerCase() !== "false")
-    );
+    return compare(getReactNativeMajorMinorVersion(), "0.84.0") >= 0;
   });
 }
 

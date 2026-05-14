@@ -148,10 +148,10 @@ describe("react-native-utils", () => {
     assert.equal(await getAndroidHermesEnabled(null), true);
   });
 
-  it("honors React Native 0.84 Android Hermes V1 opt-out", async () => {
+  it("keeps React Native 0.84 Android Hermes enabled when Hermes V1 is opted out", async () => {
     writeReactNativeProject(projectPath, { hermesV1Enabled: false });
 
-    assert.equal(await getAndroidHermesEnabled(null), false);
+    assert.equal(await getAndroidHermesEnabled(null), true);
   });
 
   it("keeps legacy enableHermes=false ahead of React Native 0.84 defaults", async () => {
