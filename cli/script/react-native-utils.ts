@@ -262,6 +262,12 @@ async function getHermesCommand(gradleFile: string): Promise<string> {
   if (gradleHermesCommand) {
     return path.join("android", "app", gradleHermesCommand.replace("%OS-BIN%", getHermesOSBin()));
   } else {
+    // assume if hermes-engine exists it should be used instead of hermesvm
+    const hermesEngine = path.join("node_modules", "hermes-engine", getHermesOSBin(), getHermesOSExe());
+    if (fileExists(hermesEngine)) {
+      return hermesEngine;
+    }
+
     const hermesCompilerPackagePath = getPackagePath("hermes-compiler", [process.cwd(), getReactNativePackagePath()]);
     if (hermesCompilerPackagePath) {
       const hermesCompiler = path.join(hermesCompilerPackagePath, "hermesc", getHermesOSBin(), getHermesOSExe());
@@ -270,11 +276,6 @@ async function getHermesCommand(gradleFile: string): Promise<string> {
       }
     }
 
-    // assume if hermes-engine exists it should be used instead of hermesvm
-    const hermesEngine = path.join("node_modules", "hermes-engine", getHermesOSBin(), getHermesOSExe());
-    if (fileExists(hermesEngine)) {
-      return hermesEngine;
-    }
     return path.join("node_modules", "hermesvm", getHermesOSBin(), "hermes");
   }
 }
