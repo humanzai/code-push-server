@@ -7,6 +7,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as sinon from "sinon";
+import { EventEmitter } from "events";
 import { getAndroidHermesEnabled, runHermesEmitBinaryCommand } from "../script/react-native-utils";
 
 function getHermesOSBin(): string {
@@ -196,6 +197,68 @@ android {
       path.join(outputFolder, "index.android.bundle.hbc"),
       path.join(outputFolder, "index.android.bundle"),
     ]);
+  });
+
+  it("keeps Hermes compiler output quiet when compilation succeeds", async () => {
+    writeReactNativeProject(projectPath);
+    writeHermesCompiler(projectPath);
+
+    const outputFolder = path.join(projectPath, "CodePush");
+    const bundleName = "index.android.bundle";
+    writeFile(path.join(outputFolder, bundleName), "plain js bundle");
+
+    const consoleLog = sandbox.stub(console, "log");
+    const consoleError = sandbox.stub(console, "error");
+    sandbox.stub(childProcess, "spawn").callsFake((command: string, args: string[]): any => {
+      const outputIndex = args.indexOf("-out");
+      fs.writeFileSync(args[outputIndex + 1], "compiled hermes bundle");
+
+      const hermesProcess = new EventEmitter() as any;
+      hermesProcess.stdout = new EventEmitter();
+      hermesProcess.stderr = new EventEmitter();
+
+      setImmediate(() => {
+        hermesProcess.stdout.emit("data", Buffer.from("verbose stdout\n"));
+        hermesProcess.stderr.emit("data", Buffer.from("verbose stderr\n"));
+        hermesProcess.emit("close", 0, null);
+      });
+
+      return hermesProcess;
+    });
+
+    await runHermesEmitBinaryCommand(bundleName, outputFolder, null, [], null);
+
+    sinon.assert.notCalled(consoleLog);
+    sinon.assert.notCalled(consoleError);
+    assert.equal(fs.readFileSync(path.join(outputFolder, bundleName), "utf-8"), "compiled hermes bundle");
+  });
+
+  it("includes buffered Hermes compiler output when compilation fails", async () => {
+    writeReactNativeProject(projectPath);
+    writeHermesCompiler(projectPath);
+
+    const outputFolder = path.join(projectPath, "CodePush");
+    const bundleName = "index.android.bundle";
+    writeFile(path.join(outputFolder, bundleName), "plain js bundle");
+
+    sandbox.stub(childProcess, "spawn").callsFake((): any => {
+      const hermesProcess = new EventEmitter() as any;
+      hermesProcess.stdout = new EventEmitter();
+      hermesProcess.stderr = new EventEmitter();
+
+      setImmediate(() => {
+        hermesProcess.stdout.emit("data", Buffer.from("useful stdout\n"));
+        hermesProcess.stderr.emit("data", Buffer.from("useful stderr\n"));
+        hermesProcess.emit("close", 1, null);
+      });
+
+      return hermesProcess;
+    });
+
+    await assert.rejects(
+      () => runHermesEmitBinaryCommand(bundleName, outputFolder, null, [], null),
+      /Command:[\s\S]*Hermes stdout:\nuseful stdout[\s\S]*Hermes stderr:\nuseful stderr/
+    );
   });
 
   it("keeps hermes-engine ahead of hermes-compiler for legacy React Native projects", async () => {

@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as chalk from "chalk";
 import * as path from "path";
 import * as childProcess from "child_process";
 import { coerce, compare, valid } from "semver";
@@ -9,6 +8,11 @@ const g2js = require("gradle-to-js/lib/parser");
 
 export function isValidVersion(version: string): boolean {
   return !!valid(version) || /^\d+\.\d+$/.test(version);
+}
+
+function formatProcessOutput(label: string, output: string): string {
+  const trimmedOutput = output.trim();
+  return trimmedOutput ? `\n${label}:\n${trimmedOutput}` : "";
 }
 
 export async function runHermesEmitBinaryCommand(
@@ -33,23 +37,32 @@ export async function runHermesEmitBinaryCommand(
     hermesArgs.push("-output-source-map");
   }
 
-  console.log(chalk.cyan("Converting JS bundle to byte code via Hermes, running command:\n"));
   const hermesCommand = await getHermesCommand(gradleFile);
   const hermesProcess = childProcess.spawn(hermesCommand, hermesArgs);
-  console.log(`${hermesCommand} ${hermesArgs.join(" ")}`);
+  const hermesCommandLine = `${hermesCommand} ${hermesArgs.join(" ")}`;
+  let hermesStdout = "";
+  let hermesStderr = "";
 
   return new Promise<void>((resolve, reject) => {
     hermesProcess.stdout.on("data", (data: Buffer) => {
-      console.log(data.toString().trim());
+      hermesStdout += data.toString();
     });
 
     hermesProcess.stderr.on("data", (data: Buffer) => {
-      console.error(data.toString().trim());
+      hermesStderr += data.toString();
     });
 
     hermesProcess.on("close", (exitCode: number, signal: string) => {
       if (exitCode !== 0) {
-        reject(new Error(`"hermes" command failed (exitCode=${exitCode}, signal=${signal}).`));
+        reject(
+          new Error(
+            `"hermes" command failed (exitCode=${exitCode}, signal=${signal}).` +
+              `\nCommand:\n${hermesCommandLine}` +
+              formatProcessOutput("Hermes stdout", hermesStdout) +
+              formatProcessOutput("Hermes stderr", hermesStderr)
+          )
+        );
+        return;
       }
       // Copy HBC bundle to overwrite JS bundle
       const source = path.join(outputFolder, bundleName + ".hbc");
