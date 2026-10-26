@@ -1,0 +1,2 @@
+# React Native 0.84 enables Hermes by default.
+use_react_native!(:path => "../node_modules/react-native", :hermes_enabled => true)

@@ -5,7 +5,6 @@ import * as assert from "assert";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as hashUtils from "../script/hash-utils";
-var mkdirp = require("mkdirp");
 import * as os from "os";
 import * as path from "path";
 import * as q from "q";
@@ -20,6 +19,10 @@ function randomString(): string {
     .randomBytes(Math.ceil(stringLength / 2))
     .toString("hex") // convert to hexadecimal format
     .slice(0, stringLength); // return required number of characters
+}
+
+function mkdirp(directoryPath: string, callback: (err?: Error) => void): void {
+  fs.mkdir(directoryPath, { recursive: true }, callback);
 }
 
 function unzipToDirectory(zipPath: string, directoryPath: string): Promise<void> {

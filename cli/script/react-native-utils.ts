@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as chalk from "chalk";
 import * as path from "path";
 import * as childProcess from "child_process";
 import { coerce, compare, valid } from "semver";
@@ -11,6 +10,11 @@ export function isValidVersion(version: string): boolean {
   return !!valid(version) || /^\d+\.\d+$/.test(version);
 }
 
+function formatProcessOutput(label: string, output: string): string {
+  const trimmedOutput = output.trim();
+  return trimmedOutput ? `\n${label}:\n${trimmedOutput}` : "";
+}
+
 export async function runHermesEmitBinaryCommand(
     bundleName: string,
     outputFolder: string,
@@ -19,41 +23,46 @@ export async function runHermesEmitBinaryCommand(
     gradleFile: string
 ): Promise<void> {
   const hermesArgs: string[] = [];
-  const envNodeArgs: string = process.env.CODE_PUSH_NODE_ARGS;
-
-  if (typeof envNodeArgs !== "undefined") {
-    Array.prototype.push.apply(hermesArgs, envNodeArgs.trim().split(/\s+/));
-  }
+  const hermesExtraFlags = extraHermesFlags || [];
 
   Array.prototype.push.apply(hermesArgs, [
     "-emit-binary",
     "-out",
     path.join(outputFolder, bundleName + ".hbc"),
     path.join(outputFolder, bundleName),
-    ...extraHermesFlags,
+    ...hermesExtraFlags,
   ]);
 
   if (sourcemapOutput) {
     hermesArgs.push("-output-source-map");
   }
 
-  console.log(chalk.cyan("Converting JS bundle to byte code via Hermes, running command:\n"));
   const hermesCommand = await getHermesCommand(gradleFile);
   const hermesProcess = childProcess.spawn(hermesCommand, hermesArgs);
-  console.log(`${hermesCommand} ${hermesArgs.join(" ")}`);
+  const hermesCommandLine = `${hermesCommand} ${hermesArgs.join(" ")}`;
+  let hermesStdout = "";
+  let hermesStderr = "";
 
   return new Promise<void>((resolve, reject) => {
     hermesProcess.stdout.on("data", (data: Buffer) => {
-      console.log(data.toString().trim());
+      hermesStdout += data.toString();
     });
 
     hermesProcess.stderr.on("data", (data: Buffer) => {
-      console.error(data.toString().trim());
+      hermesStderr += data.toString();
     });
 
     hermesProcess.on("close", (exitCode: number, signal: string) => {
       if (exitCode !== 0) {
-        reject(new Error(`"hermes" command failed (exitCode=${exitCode}, signal=${signal}).`));
+        reject(
+          new Error(
+            `"hermes" command failed (exitCode=${exitCode}, signal=${signal}).` +
+              `\nCommand:\n${hermesCommandLine}` +
+              formatProcessOutput("Hermes stdout", hermesStdout) +
+              formatProcessOutput("Hermes stderr", hermesStderr)
+          )
+        );
+        return;
       }
       // Copy HBC bundle to overwrite JS bundle
       const source = path.join(outputFolder, bundleName + ".hbc");
@@ -124,7 +133,7 @@ export async function runHermesEmitBinaryCommand(
   });
 }
 
-function parseBuildGradleFile(gradleFile: string) {
+function getBuildGradlePath(gradleFile: string): string {
   let buildGradlePath: string = path.join("android", "app");
   if (gradleFile) {
     buildGradlePath = gradleFile;
@@ -136,6 +145,12 @@ function parseBuildGradleFile(gradleFile: string) {
   if (fileDoesNotExistOrIsDirectory(buildGradlePath)) {
     throw new Error(`Unable to find gradle file "${buildGradlePath}".`);
   }
+
+  return buildGradlePath;
+}
+
+function parseBuildGradleFile(gradleFile: string) {
+  const buildGradlePath = getBuildGradlePath(gradleFile);
 
   return g2js.parseFile(buildGradlePath).catch(() => {
     throw new Error(`Unable to parse the "${buildGradlePath}" file. Please ensure it is a well-formed Gradle file.`);
@@ -154,19 +169,69 @@ async function getHermesCommandFromGradle(gradleFile: string): Promise<string> {
   }
 }
 
-export function getAndroidHermesEnabled(gradleFile: string): boolean {
+function getAndroidGradlePropertiesPath(gradleFile: string): string {
+  const buildGradlePath = getBuildGradlePath(gradleFile);
+  return path.join(path.dirname(path.dirname(buildGradlePath)), "gradle.properties");
+}
+
+function getGradleProperty(gradlePropertiesPath: string, propertyName: string): string {
+  if (fileDoesNotExistOrIsDirectory(gradlePropertiesPath)) {
+    return null;
+  }
+
+  const gradleProperties = fs.readFileSync(gradlePropertiesPath, "utf-8");
+  for (const line of gradleProperties.split(/\r?\n/)) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith("#")) {
+      continue;
+    }
+
+    const propertyMatch = /^([^=]+)=(.*)$/.exec(trimmedLine);
+    if (propertyMatch && propertyMatch[1].trim() === propertyName) {
+      return propertyMatch[2].trim();
+    }
+  }
+
+  return null;
+}
+
+function getReactNativeMajorMinorVersion(): string {
+  const reactNativeVersion = coerce(getReactNativeVersion());
+  return reactNativeVersion && reactNativeVersion.version;
+}
+
+export function getAndroidHermesEnabled(gradleFile: string): Promise<boolean> {
   return parseBuildGradleFile(gradleFile).then((buildGradle: any) => {
-    return Array.from(buildGradle["project.ext.react"] || []).some((line: string) => /^enableHermes\s{0,}:\s{0,}true/.test(line));
+    const legacyHermesFlag = Array.from(buildGradle["project.ext.react"] || []).find((line: string) =>
+      /^enableHermes\s{0,}:\s{0,}(true|false)/.test(line)
+    );
+    if (legacyHermesFlag) {
+      return /^enableHermes\s{0,}:\s{0,}true/.test(legacyHermesFlag as string);
+    }
+
+    const gradlePropertiesPath = getAndroidGradlePropertiesPath(gradleFile);
+    const hermesEnabledProperty = getGradleProperty(gradlePropertiesPath, "hermesEnabled");
+    if (hermesEnabledProperty !== null) {
+      return hermesEnabledProperty.toLowerCase() === "true";
+    }
+
+    return compare(getReactNativeMajorMinorVersion(), "0.84.0") >= 0;
   });
 }
 
 export function getiOSHermesEnabled(podFile: string): boolean {
-  let podPath = path.join("ios", "Podfile");
-  if (podFile) {
-    podPath = podFile;
+  let podPath = podFile;
+  const defaultPodPaths = [path.join("ios", "Podfile"), path.join("iOS", "Podfile")];
+  if (!podPath) {
+    podPath = defaultPodPaths.find((podFilePath: string) => !fileDoesNotExistOrIsDirectory(podFilePath));
   }
+
   if (fileDoesNotExistOrIsDirectory(podPath)) {
-    throw new Error(`Unable to find Podfile file "${podPath}".`);
+    if (podFile) {
+      throw new Error(`Unable to find Podfile file "${podFile}".`);
+    }
+
+    throw new Error(`Unable to find Podfile file "${defaultPodPaths[0]}" or "${defaultPodPaths[1]}".`);
   }
 
   try {
@@ -225,7 +290,24 @@ async function getHermesCommand(gradleFile: string): Promise<string> {
     if (fileExists(hermesEngine)) {
       return hermesEngine;
     }
+
+    const hermesCompilerPackagePath = getPackagePath("hermes-compiler", [process.cwd(), getReactNativePackagePath()]);
+    if (hermesCompilerPackagePath) {
+      const hermesCompiler = path.join(hermesCompilerPackagePath, "hermesc", getHermesOSBin(), getHermesOSExe());
+      if (fileExists(hermesCompiler)) {
+        return hermesCompiler;
+      }
+    }
+
     return path.join("node_modules", "hermesvm", getHermesOSBin(), "hermes");
+  }
+}
+
+function getPackagePath(packageName: string, searchPaths: string[]): string {
+  try {
+    return path.dirname(require.resolve(`${packageName}/package.json`, { paths: searchPaths }));
+  } catch (e) {
+    return null;
   }
 }
 
